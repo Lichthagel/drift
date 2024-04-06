@@ -1,26 +1,37 @@
 {
-  description = "My Nix packages";
+  description = "drift";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-23.11";
-    unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-
-    snowfall-lib = {
-      url = "github:snowfallorg/lib";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = inputs:
-    inputs.snowfall-lib.mkFlake {
-      inherit inputs;
+  outputs =
+    { nixpkgs, ... }:
+    let
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aaarch64-darwin"
+      ];
+      eachSystems =
+        f:
+        nixpkgs.lib.genAttrs systems (
+          system:
+          f {
+            inherit system;
+            pkgs = nixpkgs.legacyPackages.${system};
+          }
+        );
+    in
+    {
+      packages = eachSystems (
+        { pkgs, ... }:
+        rec {
+          drift = pkgs.callPackage ./packages/drift { };
 
-      src = ./.;
-
-      alias.packages.default = "drift";
-
-      snowfall = {
-        namespace = "snowfallorg";
-      };
+          default = drift;
+        }
+      );
     };
 }
